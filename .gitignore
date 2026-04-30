@@ -141,3 +141,20 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# macOS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows specific files
+ehthumbs.db
+Thumbs.db
+
+# Linux/Unix specific files
+*.swp
+*.swo
+*~
+
