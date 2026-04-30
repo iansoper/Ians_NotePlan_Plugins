@@ -6,7 +6,6 @@
 // Settings are stored via NotePlan's native plugin settings.
 // ============================================================
 
-var FIREFLIES_DB_ID = "30d1bad57c4381eb8b06c38b1b6e6311";
 var DEFAULT_FOLDER = "Meetings";
 var NOTION_VERSION = "2022-06-28";
 
@@ -38,7 +37,7 @@ function getToken() {
     log("WARNING: notionToken is empty in plugin settings");
     return null;
   }
-  log("Token found: " + s.notionToken.trim().substring(0, 14) + "…");
+  log("Token found.");
   return s.notionToken.trim();
 }
 
@@ -48,6 +47,15 @@ function getTargetFolder() {
   var result = folder || DEFAULT_FOLDER;
   log("Target folder: " + result);
   return result;
+}
+
+function getFirefliesDbId() {
+  var s = DataStore.settings;
+  var firefliesDbId = s && s.firefliesDbId ? s.firefliesDbId.trim() : "";
+  if (!firefliesDbId) {
+    log("WARNING: firefliesDbId is not set in plugin settings — Fireflies sync will be skipped.");
+  }
+  return firefliesDbId;
 }
 
 function getLastSync() {
@@ -157,6 +165,9 @@ async function notionFetch(url, token, body) {
 // ─── SOURCE 1: Fireflies database ─────────────────────────────────────────────
 
 async function fetchFirefliesPages(token, filterAfter) {
+  var firefliesDbId = getFirefliesDbId();
+  if (!firefliesDbId) return [];
+
   log("--- Fetching Fireflies database ---");
   var payload = {
     page_size: 50,
@@ -172,7 +183,7 @@ async function fetchFirefliesPages(token, filterAfter) {
     log("No date filter — fetching all Fireflies meetings");
   }
   var data = await notionFetch(
-    "https://api.notion.com/v1/databases/" + FIREFLIES_DB_ID + "/query",
+    "https://api.notion.com/v1/databases/" + firefliesDbId + "/query",
     token,
     payload,
   );

@@ -20,7 +20,9 @@ const http      = require('http')
 const fs        = require('fs')
 const path      = require('path')
 const url       = require('url')
-const { execSync } = require('child_process')
+const https     = require('https')
+const crypto    = require('crypto')
+const { execFile } = require('child_process')
 
 // ─── Configuration ───────────────────────────────────────────
 const CONFIG = {
@@ -102,6 +104,31 @@ function checkApiKey(req) {
   return key === CONFIG.apiKey
 }
 
+function verifyWebhookSignature(rawBody, req) {
+  // If a webhook signing secret is configured, require a valid HMAC-SHA256
+  // signature delivered in the x-amie-signature header.
+  if (CONFIG.webhookSecret) {
+    const provided = req.headers['x-amie-signature'] || ''
+    const expected = 'sha256=' + crypto
+      .createHmac('sha256', CONFIG.webhookSecret)
+      .update(rawBody)
+      .digest('hex')
+    const providedBuf = Buffer.from(provided)
+    const expectedBuf = Buffer.from(expected)
+    // timingSafeEqual requires equal-length buffers; reject immediately if lengths differ
+    if (providedBuf.length !== expectedBuf.length) return false
+    return crypto.timingSafeEqual(providedBuf, expectedBuf)
+  }
+  // Fall back to API key check so an API_KEY can also protect the webhook
+  // endpoint when no signing secret is configured.
+  if (CONFIG.apiKey) {
+    const key = req.headers['x-api-key'] || ''
+    return key === CONFIG.apiKey
+  }
+  // Neither secret configured — accept (localhost-only is still safe)
+  return true
+}
+
 // ─── Request Body Reader ──────────────────────────────────────
 
 function readBody(req) {
@@ -118,6 +145,15 @@ function readBody(req) {
 async function handleWebhook(req, res, store) {
   // Amie posts to /webhook
   const body = await readBody(req)
+
+  // Verify signature / API key before processing the payload
+  if (!verifyWebhookSignature(body, req)) {
+    logLine('Webhook rejected: invalid signature or missing API key')
+    res.writeHead(401)
+    res.end('Unauthorized')
+    return
+  }
+
   let payload
 
   try {
@@ -204,14 +240,56 @@ function downloadAudioAsync(meeting) {
   const dest = localAudioPath(meeting)
   if (!dest || fs.existsSync(dest)) return
 
-  // Use curl for download (available on macOS by default)
+  // Validate the URL to prevent request forgery: must be a well-formed https URL
+  // with a public hostname (no localhost, loopback, or private ranges).
+  let parsedUrl
+  try {
+    parsedUrl = new URL(meeting.audioUrl)
+  } catch (_) {
+    logLine(`Skipping audio download for ${meeting.id}: invalid URL`)
+    return
+  }
+  if (parsedUrl.protocol !== 'https:') {
+    logLine(`Skipping audio download for ${meeting.id}: URL must use https`)
+    return
+  }
+  const hostname = parsedUrl.hostname.toLowerCase()
+  // Block loopback, private (RFC 1918), link-local, and unspecified IPv4 addresses
+  if (
+    hostname === 'localhost' ||
+    hostname.startsWith('127.') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('169.254.') ||   // link-local
+    hostname === '0.0.0.0' ||
+    hostname === '[::1]' ||              // IPv6 loopback
+    hostname.startsWith('[fc') ||        // IPv6 unique local (fc00::/7)
+    hostname.startsWith('[fd') ||        // IPv6 unique local (fd00::/8)
+    hostname.startsWith('[fe80')         // IPv6 link-local (fe80::/10)
+  ) {
+    logLine(`Skipping audio download for ${meeting.id}: private/loopback hostname not allowed`)
+    return
+  }
+  // Block the 172.16.0.0/12 private range (172.16.x.x – 172.31.x.x).
+  // Only match valid octets (0-255) to avoid false positives.
+  const match172 = hostname.match(/^172\.(1[6-9]|2\d|3[01])\./)
+  if (match172) {
+    logLine(`Skipping audio download for ${meeting.id}: private/loopback hostname not allowed`)
+    return
+  }
+
+  // Use execFile so the URL and destination are passed as separate arguments,
+  // preventing shell injection from a crafted audioUrl value.
+  // --max-redirs 0 prevents an attacker from bypassing the above hostname
+  // validation by supplying a valid URL that redirects to a private address.
   setTimeout(() => {
-    try {
-      execSync(`curl -sL "${meeting.audioUrl}" -o "${dest}"`, { timeout: 120000 })
-      logLine(`Audio downloaded: ${path.basename(dest)}`)
-    } catch (e) {
-      logLine(`Audio download failed for ${meeting.id}: ${e.message}`)
-    }
+    execFile('curl', ['-s', '--max-redirs', '0', parsedUrl.href, '-o', dest], { timeout: 120000 }, (err) => {
+      if (err) {
+        logLine(`Audio download failed for ${meeting.id}: ${err.message}`)
+      } else {
+        logLine(`Audio downloaded: ${path.basename(dest)}`)
+      }
+    })
   }, 100)
 }
 
@@ -231,6 +309,13 @@ function main() {
     logLine('API key authentication ENABLED.')
   } else {
     logLine('⚠️  No API_KEY set — relay is open (localhost only is still safe).')
+  }
+  if (CONFIG.webhookSecret) {
+    logLine('Webhook HMAC signature verification ENABLED.')
+  } else if (CONFIG.apiKey) {
+    logLine('Webhook protected by API key (no HMAC secret configured).')
+  } else {
+    logLine('⚠️  No AMIE_WEBHOOK_SECRET set — webhook endpoint is unprotected.')
   }
 
   const server = http.createServer(async (req, res) => {

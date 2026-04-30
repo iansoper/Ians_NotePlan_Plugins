@@ -11,7 +11,7 @@
     <!-- Update this path to point to your node installation -->
     <string>/usr/local/bin/node</string>
     <!-- Update this path to where you placed the relay -->
-    <string>/Users/YOUR_USERNAME/Library/Application Support/NotePlan/Plugins/ian.amie-noteplan-sync/relay/server.js</string>
+    <string>/Users/YOUR_USERNAME/Library/Application Support/NotePlan/Plugins/iansoper.AmieSync/relay/server.js</string>
   </array>
 
   <key>EnvironmentVariables</key>

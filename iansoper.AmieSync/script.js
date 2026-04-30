@@ -351,13 +351,13 @@ async function writeMeetingNote(meeting, folder, taskTag) {
       // Overwrite content (re-sync)
       note.content = content
       log(`Updated existing note: ${filename}`)
+      return { status: 'updated', filename: `${date} ${safeName}` }
     } else {
       // Create new note
       note = await DataStore.newNoteWithContent(content, folder, `${date} ${safeName}`)
       log(`Created new note: ${filename}`)
+      return { status: 'created', filename: `${date} ${safeName}` }
     }
-
-    return `${date} ${safeName}`
   } catch (err) {
     log('Error writing note: ' + JSON.stringify(err))
     return null
@@ -424,11 +424,14 @@ async function runSync(startDate, endDate) {
   let updated = 0
 
   for (const meeting of meetings) {
-    const noteFilename = await writeMeetingNote(meeting, folder, taskTag)
-    if (noteFilename) {
-      created++
-    } else {
-      updated++
+    const result = await writeMeetingNote(meeting, folder, taskTag)
+    const noteFilename = result ? result.filename : null
+    if (result) {
+      if (result.status === 'created') {
+        created++
+      } else {
+        updated++
+      }
     }
 
     if (appendDaily) {

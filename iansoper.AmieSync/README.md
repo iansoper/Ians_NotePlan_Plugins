@@ -23,7 +23,7 @@ Because Amie's webhook support is **early access** and fires on meeting completi
 ## Files
 
 ```
-amie-noteplan-sync/
+iansoper.AmieSync/
 ├── plugin.json           ← NotePlan plugin manifest
 ├── script.js             ← NotePlan plugin logic
 └── relay/
@@ -39,7 +39,7 @@ amie-noteplan-sync/
 
 1. Open Finder and navigate to:
    `~/Library/Application Support/NotePlan/Plugins/`
-2. Create a folder named `ian.amie-noteplan-sync`
+2. Create a folder named `iansoper.AmieSync`
 3. Copy `plugin.json` and `script.js` into it
 4. In NotePlan, open **Preferences → Plugins** and enable the plugin
 5. Optionally create the `relay/` sub-folder there too (for auto-start)
