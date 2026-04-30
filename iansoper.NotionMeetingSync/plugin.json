@@ -1,0 +1,49 @@
+{
+    "plugin.id": "iansoper.NotionMeetingSync",
+    "plugin.name": "Notion Meeting Sync",
+    "plugin.description": "Syncs Fireflies and native Notion meeting recordings into NotePlan as markdown notes with tasks.",
+    "plugin.author": "Ian Soper",
+    "plugin.version": "1.11.0",
+    "plugin.icon": "\ud83d\udd04",
+    "plugin.minAppVersion": "3.9.2",
+    "plugin.dependencies": [],
+    "plugin.script": "script.js",
+    "plugin.settings": [
+        {
+            "key": "notionToken",
+            "title": "Notion API Token",
+            "description": "Your Notion integration token (starts with ntn_ or secret_). Get one at notion.so/my-integrations.",
+            "type": "string",
+            "default": "",
+            "required": true
+        },
+        {
+            "key": "targetFolder",
+            "title": "Sync Folder",
+            "description": "NotePlan folder to sync meetings into. Must be an existing folder path exactly as it appears in NotePlan (e.g. \"0_Inbox\" or \"1_Projects/Work\"). The plugin will log available folders on each sync.",
+            "type": "string",
+            "default": "0_Inbox",
+            "required": true
+        },
+        {
+            "key": "lastSync",
+            "title": "Last Sync Timestamp",
+            "description": "Set automatically by the plugin. Clear this to force a full re-sync on next run.",
+            "type": "string",
+            "default": "",
+            "required": false
+        }
+    ],
+    "plugin.commands": [
+        {
+            "name": "Sync Notion Meetings",
+            "description": "Import new/updated meetings from Notion (Fireflies + native recordings) into your configured folder",
+            "jsFunction": "syncNotionMeetings"
+        },
+        {
+            "name": "Notion Sync: Clear Last Sync",
+            "description": "Reset the last sync timestamp so the next run imports all meetings from scratch",
+            "jsFunction": "clearLastSync"
+        }
+    ]
+}
