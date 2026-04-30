@@ -8,6 +8,7 @@
     "plugin.minAppVersion": "3.9.2",
     "plugin.dependencies": [],
     "plugin.script": "script.js",
+    "plugin.url": "https://github.com/iansoper/Ians_NotePlan_Plugins/tree/main/iansoper.NotionMeetingSync",
     "plugin.settings": [
         {
             "key": "notionToken",

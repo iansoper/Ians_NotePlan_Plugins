@@ -8,7 +8,7 @@
   "plugin.minAppVersion": "3.9.0",
   "plugin.macOS.minVersion": "10.15.7",
   "plugin.script": "script.js",
-  "plugin.url": "https://github.com/iansoper/noteplan-amie-sync",
+  "plugin.url": "https://github.com/iansoper/Ians_NotePlan_Plugins/tree/main/iansoper.AmieSync",
   "plugin.commands": [
     {
       "name": "Sync Amie Meetings",
