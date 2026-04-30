@@ -254,7 +254,8 @@ function downloadAudioAsync(meeting) {
     return
   }
   const hostname = parsedUrl.hostname.toLowerCase()
-  // Block loopback, private (RFC 1918), link-local, and unspecified IPv4 addresses
+  // Block loopback, private (RFC 1918), link-local, and unspecified IPv4 addresses.
+  // Note: parsedUrl.hostname strips brackets from IPv6 literals (e.g. [::1] → ::1).
   if (
     hostname === 'localhost' ||
     hostname.startsWith('127.') ||
@@ -262,28 +263,41 @@ function downloadAudioAsync(meeting) {
     hostname.startsWith('192.168.') ||
     hostname.startsWith('169.254.') ||   // link-local
     hostname === '0.0.0.0' ||
-    hostname === '[::1]' ||              // IPv6 loopback
-    hostname.startsWith('[fc') ||        // IPv6 unique local (fc00::/7)
-    hostname.startsWith('[fd') ||        // IPv6 unique local (fd00::/8)
-    hostname.startsWith('[fe80')         // IPv6 link-local (fe80::/10)
+    hostname === '::1' ||                // IPv6 loopback (no brackets after URL parse)
+    hostname.startsWith('fc') ||         // IPv6 unique local (fc00::/7)
+    hostname.startsWith('fd') ||         // IPv6 unique local (fd00::/8)
+    hostname.startsWith('fe80')          // IPv6 link-local (fe80::/10)
   ) {
     logLine(`Skipping audio download for ${meeting.id}: private/loopback hostname not allowed`)
     return
   }
   // Block the 172.16.0.0/12 private range (172.16.x.x – 172.31.x.x).
-  // Only match valid octets (0-255) to avoid false positives.
-  const match172 = hostname.match(/^172\.(1[6-9]|2\d|3[01])\./)
+  // Require all four octets to be present to avoid matching non-IP hostnames.
+  const match172 = hostname.match(/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/)
   if (match172) {
     logLine(`Skipping audio download for ${meeting.id}: private/loopback hostname not allowed`)
     return
   }
+
+  // Ensure the destination path is within the configured audio folder to
+  // prevent path traversal via a crafted meeting title or date.
+  const resolvedDest = path.resolve(dest)
+  const resolvedAudioFolder = path.resolve(CONFIG.audioFolder)
+  if (!resolvedDest.startsWith(resolvedAudioFolder + path.sep)) {
+    logLine(`Skipping audio download for ${meeting.id}: destination path outside audio folder`)
+    return
+  }
+
+  // Reconstruct the URL explicitly from validated components so that curl
+  // receives exactly the same URL we validated (protocol, host, path, query).
+  const safeUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}`
 
   // Use execFile so the URL and destination are passed as separate arguments,
   // preventing shell injection from a crafted audioUrl value.
   // --max-redirs 0 prevents an attacker from bypassing the above hostname
   // validation by supplying a valid URL that redirects to a private address.
   setTimeout(() => {
-    execFile('curl', ['-s', '--max-redirs', '0', parsedUrl.href, '-o', dest], { timeout: 120000 }, (err) => {
+    execFile('curl', ['-s', '--max-redirs', '0', safeUrl, '-o', dest], { timeout: 120000 }, (err) => {
       if (err) {
         logLine(`Audio download failed for ${meeting.id}: ${err.message}`)
       } else {
