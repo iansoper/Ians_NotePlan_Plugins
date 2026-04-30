@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>io.amie.noteplan-relay</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <!-- Update this path to point to your node installation -->
+    <string>/usr/local/bin/node</string>
+    <!-- Update this path to where you placed the relay -->
+    <string>/Users/YOUR_USERNAME/Library/Application Support/NotePlan/Plugins/iansoper.AmieSync/relay/server.js</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Optional: Set a shared secret so only your NotePlan plugin can read from the relay -->
+    <key>API_KEY</key>
+    <string>change-me-to-a-random-secret</string>
+
+    <!-- Optional: Set a custom port (default 3747) -->
+    <!-- <key>PORT</key> -->
+    <!-- <string>3747</string> -->
+  </dict>
+
+  <!-- Restart automatically if it crashes -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Start at login -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Documents/AmieMeetings/relay.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Documents/AmieMeetings/relay.stderr.log</string>
+</dict>
+</plist>
